@@ -1,7 +1,9 @@
 package com.example.android.wander
 
+import android.content.res.Resources
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 
@@ -9,12 +11,17 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.MarkerOptions
+import java.util.*
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var map: GoogleMap
+
+    private val TAG = MapsActivity::class.java.simpleName
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,10 +44,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
 
+        val latitude = 80.823670
+        val longitude = 20.357667
+
         // Add a marker in Sydney and move the camera
-        val sydney = LatLng(-34.0, 151.0)
-        map.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        map.moveCamera(CameraUpdateFactory.newLatLng(sydney))
+        val customLatLong = LatLng(latitude, longitude)
+        val zoomLevel = 8.5f
+
+        map.apply {
+            addMarker(MarkerOptions().position(customLatLong))
+            moveCamera(CameraUpdateFactory.newLatLngZoom(customLatLong, zoomLevel))
+
+            setMapLongClick()
+            setPoiClick()
+            setMapStyle()
+        }
+
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -68,6 +87,59 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 true
             }
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+
+    // Private
+    private fun GoogleMap.setMapStyle() {
+        try {
+            val success = setMapStyle(
+                    MapStyleOptions.loadRawResourceStyle(
+                            this@MapsActivity,
+                            R.raw.map_style
+                    )
+            )
+
+            if (!success) {
+                Log.e(TAG, "Style parsing failed!")
+            }
+
+        } catch (error: Resources.NotFoundException) {
+            Log.e(TAG, "Can't find style. Error: ", error)
+        }
+    }
+
+    private fun GoogleMap.setMapLongClick() {
+        setOnMapLongClickListener { latLng ->
+            val snippet = String.format(
+                    Locale.getDefault(),
+                    "Lat: %1$.5f, Long: %2$.5f",
+                    latLng.latitude,
+                    latLng.longitude
+            )
+
+            addMarker(
+                    MarkerOptions().apply {
+                        position(latLng)
+                        title(getString(R.string.dropped_pin))
+                        snippet(snippet)
+                        icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                    }
+            )
+        }
+    }
+
+    private fun GoogleMap.setPoiClick() {
+        setOnPoiClickListener { poi ->
+            addMarker(
+                    MarkerOptions()
+                            .position(poi.latLng)
+                            .title(poi.name)
+
+            ).apply {
+                showInfoWindow()
+            }
         }
     }
 }
